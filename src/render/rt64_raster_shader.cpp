@@ -249,7 +249,7 @@ namespace RT64 {
         vss << std::string_view(RenderParamsText, sizeof(RenderParamsText));
         vss << "RenderParams getRenderParams() {" + renderParamsCode + "; return rp; }";
         vss <<
-            "void RasterVS(const RenderParams, in float4, in float2, in float4, out float4, out float2, out float4, out float4);"
+            "void RasterVS(const RenderParams, in float4, in float2, in float4, out float4, out float2, out float4, out float4, out float);"
             "[shader(\"vertex\")]"
             "void VSMain("
             "   in float4 iPosition : POSITION,"
@@ -257,7 +257,7 @@ namespace RT64 {
             "   in float4 iColor : COLOR,"
             "   out float4 oPosition : SV_POSITION,"
             "   out float2 oUV : TEXCOORD,"
-            "   out float4 oSmoothColor : COLOR0";
+            "   out float4 oSmoothColor : COLOR0, noperspective out float oFogQ : TEXCOORD1";
 
         if (!desc.flags.smoothShade) {
             vss << ", out float4 oFlatColor : COLOR1) {";
@@ -267,7 +267,7 @@ namespace RT64 {
         }
 
         vss <<
-            "   RasterVS(getRenderParams(), iPosition, iUV, iColor, oPosition, oUV, oSmoothColor, oFlatColor);"
+            "   RasterVS(getRenderParams(), iPosition, iUV, iColor, oPosition, oUV, oSmoothColor, oFlatColor, oFogQ);"
             "}";
 
         // Generate pixel shader.
@@ -275,12 +275,12 @@ namespace RT64 {
         pss << std::string_view(RenderParamsText, sizeof(RenderParamsText));
         pss << "RenderParams getRenderParams() {" + renderParamsCode + "; return rp; }";
         pss <<
-            "bool RasterPS(const RenderParams, float4, float2, float4, float4, bool, out float4, out float4);"
+            "bool RasterPS(const RenderParams, float4, float2, float4, float4, float, bool, out float4, out float4);"
             "[shader(\"pixel\")]"
             "void PSMain("
             "  in float4 vertexPosition : SV_POSITION"
             ", in float2 vertexUV : TEXCOORD"
-            ", in float4 vertexSmoothColor : COLOR0";
+            ", in float4 vertexSmoothColor : COLOR0, noperspective in float vertexFogQ : TEXCOORD1";
 
         if (!desc.flags.smoothShade) {
             pss << ", nointerpolation in float4 vertexFlatColor : COLOR1";
@@ -298,7 +298,7 @@ namespace RT64 {
         pss <<
             "   float4 resultColor;"
             "   float4 resultAlpha;"
-            "   if (!RasterPS(getRenderParams(), vertexPosition, vertexUV, vertexSmoothColor, vertexFlatColor, false, resultColor, resultAlpha)) discard;"
+            "   if (!RasterPS(getRenderParams(), vertexPosition, vertexUV, vertexSmoothColor, vertexFlatColor, vertexFogQ, false, resultColor, resultAlpha)) discard;"
             "   pixelColor = resultColor;"
             "   pixelAlpha = resultAlpha;"
             "}";

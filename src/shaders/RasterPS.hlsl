@@ -45,7 +45,7 @@ float sampleBackgroundDepth(int2 pixelPos, uint sampleCount) {
 }
 #endif
 
-LIBRARY_EXPORT bool RasterPS(const RenderParams rp, float4 vertexPosition, float2 vertexUV, float4 vertexSmoothColor, float4 vertexFlatColor,
+LIBRARY_EXPORT bool RasterPS(const RenderParams rp, float4 vertexPosition, float2 vertexUV, float4 vertexSmoothColor, float4 vertexFlatColor, float vertexFogQ,
     bool isFrontFace, out float4 resultColor, out float4 resultAlpha) 
 {
     const OtherMode otherMode = { rp.omL, rp.omH };
@@ -68,7 +68,7 @@ LIBRARY_EXPORT bool RasterPS(const RenderParams rp, float4 vertexPosition, float
     // in a wider range of values. Not accounting for this can lead to geometry showing up that should otherwise be invisible.
     // This max range was determined by using a test ROM against an LLE implementation.
     // FIXME: This should be turned off for non-F3D microcodes.
-    const bool simulateDepthClipF3D = true;
+    const bool simulateDepthClipF3D = instanceRDPParams[instanceIndex].pcFog.y == 0.0f;
     const float MaxDepth = simulateDepthClipF3D && !renderFlagRect(rp.flags) && !zSourcePrim ? (1022.0f / 1024.0f) : 1.0f;
     
     // FIXME: This can be implemented by checking feature support for the API and embedding the depth bounds into the pipeline.
@@ -228,7 +228,16 @@ LIBRARY_EXPORT bool RasterPS(const RenderParams rp, float4 vertexPosition, float
     blInputs.blendColor = instanceRDPParams[instanceIndex].blendColor;
     blInputs.fogColor = instanceRDPParams[instanceIndex].fogColor;
     blInputs.shadeAlpha = shadeColor.a;
+    if (instanceRDPParams[instanceIndex].pcFog.y != 0.0f) {
+        blInputs.shadeAlpha = 0.0f;
+    }
+
     resultColor = Blender::run(otherMode, rp.flags, blInputs, combinerColor, false);
+    if (instanceRDPParams[instanceIndex].pcFog.y != 0.0f && instanceRDPParams[instanceIndex].pcFog.x > 0.0f) {
+        float fog = saturate((vertexFogQ >= (1.0f / 256.0f) ? 8.0f - 1024.0f * vertexFogQ : 12.0f - 2048.0f * vertexFogQ) / 5.0f);
+        resultColor.rgb = lerp(resultColor.rgb, blInputs.fogColor.rgb, fog);
+    }
+
     resultAlpha = 1.0f;
     
     // When using alpha blending, we store the blending factor into the dedicated output so the main one can be used for coverage.
@@ -284,6 +293,7 @@ void PSMain(
       in float4 vertexPosition : SV_POSITION
     , in float2 vertexUV : TEXCOORD
     , in float4 vertexSmoothColor : COLOR0
+    , noperspective in float vertexFogQ : TEXCOORD1
 #if defined(DYNAMIC_RENDER_PARAMS) || defined(VERTEX_FLAT_COLOR)
     , nointerpolation in float4 vertexFlatColor : COLOR1
 #endif
@@ -303,7 +313,7 @@ void PSMain(
     float4 resultColor;
     float4 resultAlpha;
     float resultDepth;
-    if (!RasterPS(getRenderParams(), vertexPosition, vertexUV, vertexSmoothColor, vertexFlatColor, isFrontFace, resultColor, resultAlpha)) {
+    if (!RasterPS(getRenderParams(), vertexPosition, vertexUV, vertexSmoothColor, vertexFlatColor, vertexFogQ, isFrontFace, resultColor, resultAlpha)) {
         discard;
     }
 

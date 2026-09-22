@@ -11,7 +11,7 @@
 
 [[vk::push_constant]] ConstantBuffer<RasterParams> gConstants : register(b0, space0);
 
-LIBRARY_EXPORT void RasterVS(const RenderParams rp, in float4 iPosition, in float2 iUV, in float4 iColor, out float4 oPosition, out float2 oUV, out float4 oSmoothColor, out float4 oFlatColor) {
+LIBRARY_EXPORT void RasterVS(const RenderParams rp, in float4 iPosition, in float2 iUV, in float4 iColor, out float4 oPosition, out float2 oUV, out float4 oSmoothColor, out float4 oFlatColor, out float oFogQ) {
     float4 ndcPos = iPosition;
     
     // Skip any sort of transformation on the coordinates when rendering rects.
@@ -33,6 +33,8 @@ LIBRARY_EXPORT void RasterVS(const RenderParams rp, in float4 iPosition, in floa
         ndcPos.z = instanceRDPParams[instanceIndex].primDepth.x * ndcPos.w;
     }
 
+    const uint pcInstanceIndex = instanceRenderIndices[gConstants.renderIndex].instanceIndex;
+    oFogQ = rcp(max(1.0f, iPosition.w * instanceRDPParams[pcInstanceIndex].pcFog.x - 664.0f));
     oPosition = ndcPos;
     oUV = iUV;
     oSmoothColor = iColor;
@@ -56,6 +58,7 @@ void VSMain(
     , out float4 oPosition : SV_POSITION
     , out float2 oUV : TEXCOORD
     , out float4 oSmoothColor : COLOR0
+    , noperspective out float oFogQ : TEXCOORD1
 #if defined(DYNAMIC_RENDER_PARAMS) || defined(VERTEX_FLAT_COLOR)
     , out float4 oFlatColor : COLOR1
 #endif
@@ -64,6 +67,6 @@ void VSMain(
 #if !defined(DYNAMIC_RENDER_PARAMS) && !defined(VERTEX_FLAT_COLOR)
     float4 oFlatColor;
 #endif
-    RasterVS(getRenderParams(), iPosition, iUV, iColor, oPosition, oUV, oSmoothColor, oFlatColor);
+    RasterVS(getRenderParams(), iPosition, iUV, iColor, oPosition, oUV, oSmoothColor, oFlatColor, oFogQ);
 }
 #endif

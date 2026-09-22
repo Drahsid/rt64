@@ -1667,6 +1667,9 @@ namespace RT64 {
                             break;
                         }
                         case Projection::Type::Triangle: {
+                            if (call.callDesc.rdpParams.pcFog.y != 0.0f) {
+                                invRatioScale = 1.0f;
+                            }
                             instanceDrawCall.type = InstanceDrawCall::Type::RawTriangles;
                             triangles.indexStart = call.meshDesc.rawVertexStart;
                             break;

@@ -123,6 +123,7 @@ namespace RT64 {
         drawCall.textureOn = 0;
         drawCall.textureTile = 0;
         drawCall.textureLevels = 0;
+        drawCall.rdpParams.pcFog = { 0.0f, 0.0f, 0.0f, 0.0f };
         drawCall.rdpParams.primColor = { 0.0f, 0.0f, 0.0f, 0.0f };
         drawCall.rdpParams.primLOD = { 0.0f, 0.0f };
         drawCall.rdpParams.primDepth = { 0.0f, 0.0f };
@@ -291,7 +292,7 @@ namespace RT64 {
 
                     // Check if we need to use raw TMEM decoding because the tile can sample more bytes than TMEM actually allows.
                     assert((dstCallTile.sampleWidth > 0) && (dstCallTile.sampleHeight > 0) && "Sample size calculation can only result in non-zero values.");
-                    dstCallTile.rawTMEM = TMEMHasher::requiresRawTMEM(tile, dstCallTile.sampleWidth, dstCallTile.sampleHeight, dstCallTile.tlut);
+                    dstCallTile.rawTMEM = !(drawCall.rdpParams.pcFog.y != 0.0f && rdp->tileReplacementHashes[tileIndex] != 0) && TMEMHasher::requiresRawTMEM(tile, dstCallTile.sampleWidth, dstCallTile.sampleHeight, dstCallTile.tlut);
                     
                     auto &dstRDPTile = drawData.rdpTiles[drawCall.tileIndex + t];
                     dstRDPTile.fmt = tile.fmt;

@@ -19,6 +19,7 @@ namespace interop {
         float3 keyCenter;
         float3 keyScale;
         int convertK[6];
+        float4 pcFog; // x: 1000/far plane; y: vertex marker
     };
 #ifdef HLSL_CPU
 };
